@@ -18,7 +18,7 @@
   7. Показаните дни в таблицата трябва да са черни и удебелени за текущия месец, и сиви за предишен или следващ месец (css клас "fw-bold" за текущия месец и "text-black-50" за останалите)
 
  */
-
+//Масиви, в които се запазват имената на дните и месеците
 $dayNames = array('Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun');
 $monthsNames = array(
     'January',
@@ -35,34 +35,60 @@ $monthsNames = array(
     'December',
 );
 
-//Запазване на текущата дата
-$currentDate = date('Y.m.d');
+$currentDate; //запазва текущата дата
+$currentDateArray; //масив, запазващ отделните съставни части на датата - ден, месец, година
 
-//Парсване на стринга, за да вземем текущите стойности за ден, месец, година 
-$currentDateArray;
-$currentDateArray = date_parse_from_format('Y.m.d', $currentDate);
-$selectedMonth = $currentDateArray["month"];
-$selectedYear = $currentDateArray["year"];
-$firstDayOfMonth = 1;
-$daysNumberInMonth = 30;
+$firstDayOfMonth = ""; //в кой ден (пон.-нед.)е 1ви от дадения месец
+$daysNumberInMonth = 30; //брой дни в даден месец
+
+$dayIndex = 0; //индекса на първия ден от месец в масива $dayNames
+
+$currentDay = 1; //инкрементира се за да запълни таблицата с датите
+$selectedMonthString;
 
 //1. При избран месец от падащото меню и попълнена година в полето - да се визуализира календар за въпросните месец и година
+//2. Показване на текущите месец и година, в случай че не са избрани във формата
+
+if (strtolower($_SERVER['REQUEST_METHOD']) === 'get') {
+    //Запазване на текущата дата
+        $currentDate = date('Y.m.d');
+    //Парсване на стринга, за да вземем текущите стойности за ден, месец, година 
+        $currentDateArray = date_parse_from_format('Y.m.d', $currentDate);
+
+    //Текущите месец и година се задават като избрани, за да се използват в случай, че потребителя не избере други
+        $selectedMonth = $currentDateArray["month"];
+        $selectedMonthString = date("F", mktime(0, 0, 0, $selectedMonth));
+        $selectedYear = $currentDateArray["year"];
+       
+ }
 //Проверка дали има метод POST и дали са избрани месец и година
-if (strtolower($_SERVER['REQUEST_METHOD']) === 'post') {
+ else if (strtolower($_SERVER['REQUEST_METHOD']) === 'post') {
     if (!empty($_POST['m']) && !empty($_POST['y'])) {
 
         $selectedMonth = $_POST['m'];
+        $selectedMonthString = date('F', mktime(0, 0, 0, $selectedMonth, 10));
         $selectedYear = $_POST['y'];
 
-        //Намира първия ден на  избран месец
-        $firstDayOfMonth = mktime(0, 0, 0, $_POST['m'], 1, $_POST['y']);
+//Намира първия ден на избран месец
+        $firstDayOfMonth = date("D", mktime(0, 0, 0, $selectedMonth, 1, $selectedYear));
 
-        //Намира броя на дните в  избран месец
-        $daysNumberInMonth = date("t", $firstDayOfMonth);
+//Намира броя на дните в  избран месец
+        $daysNumberInMonth = date("t", mktime(0, 0, 0, $selectedMonth, 1, $selectedYear));
+
+//Намира индекса на деня, в който се пада 1ви 
+        for ($i = 0; $i < 7; $i++) {
+
+            if ($dayNames[$i] === $firstDayOfMonth) {
+                //Взема индекса на първия ден от месеца, като срявнява с имената на дните, намиращи се в масива $dayNames
+                $dayIndex = array_search($firstDayOfMonth, $dayNames);
+                break;
+            }
+            //Започва да попълва таблицата на месеца, докато стигне до последния ден според $daysNumberInMonth
+        }
+        //календара да визуализира месеца
     }
-//2. Показване на текущите месец и година, в случай че не са избрани във формата
 } else {
-    
+    //Some Error
 }
 ?>
 
@@ -91,15 +117,16 @@ if (strtolower($_SERVER['REQUEST_METHOD']) === 'post') {
                         <div class = "col-md-6 col-lg-6">
                             <label class = "form-label" for = "month">Select month:</label>
                             <select name = "m" class = "form-control" id = "month">
-                                    <?php foreach ($monthsNames as $var => $month): ?>
-                                        <option value="<?php echo $var+1 ?>"
-                                            <?php if ($var == ($selectedMonth-1)): ?> 
-                                            selected="selected"
+                                <!-- Падащо меню с месеци за избор -->
+                                <?php foreach ($monthsNames as $var => $month): ?>
+                                    <option value="<?php echo $var + 1 ?>"
+                                    <?php if ($var == ($selectedMonth - 1)): ?> 
+                                                selected="selected"
                                             <?php endif; ?>>
-                                            <?php echo $month ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
+                                                <?php echo $month ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
                         </div>
                         <div class = "col-md-6 col-lg-6">
                             <label class = "form-label" for = "year">Year:</label>
@@ -107,6 +134,7 @@ if (strtolower($_SERVER['REQUEST_METHOD']) === 'post') {
                         </div>
                         <div class = "col-md-12 col-lg-12">
                             <button type = "submit" class = "btn btn-primary">Show</button>
+                            <!-- При натискане на бутон "Today" да се показва календар за текущите месец и година-->
                             <a href = "?m=<?= $currentDateArray["month"]; ?>&y=<?= $currentDateArray["year"]; ?>" class = "btn btn-secondary">Today</a>
                         </div>
                     </form>
@@ -116,48 +144,66 @@ if (strtolower($_SERVER['REQUEST_METHOD']) === 'post') {
                 <div class = "col-md-6 mt-5 offset-md-3 col-lg-6 offset-lg-3">
                     <table class = "table table-bordered text-center">
                         <thead>
-                            <tr>
-                                <th>
-                                    <a href = "?m=10&y=2021" title = "Previous month">&larr;
-                                    </a>
-                                </th>
-                                <th colspan = "5" class = "text-center">November, 2021</th>
-                                <th>
-                                    <a href = "?m=12&y=2021" title = "Next month">&rarr;
-                                    </a>
-                                </th>
-                            </tr>
-                            <tr>
-                                <th><?= $dayNames[0]; ?></th>
-                                <th><?= $dayNames[1]; ?></th>
-                                <th><?= $dayNames[2]; ?></th>
-                                <th><?= $dayNames[3]; ?></th>
-                                <th><?= $dayNames[4]; ?></th>
-                                <th><?= $dayNames[5]; ?></th>
-                                <th><?= $dayNames[6]; ?></th>
-                            </tr>
+                            <!--Показва стрелки за минал и следващ месец-->
+                        <th>
+                            <?php $selectedMonth -= 1;
+                           if($selectedMonth === 1) :
+                               $selectedYear -= 1;
+                           endif;?>
+                            <a  href = "?m=<?= $selectedMonth; ?>&y=<?= $selectedYear; ?>" title = "Previous month">&larr;
+                            </a>
+                        </th>
+                        <th colspan = "5" class = "text-center"><?= $selectedMonthString . ', ' . $selectedYear; ?></th>
+                        <th>
+                            <?php $selectedMonth += 1;
+                           if($selectedMonth === 12) :
+                               $selectedYear += 1;
+                           endif;?>
+                            <a href = "?m=<?= $selectedMonth; ?>&y=<?= $selectedYear; ?>" title = "Next month">&rarr;
+                            </a>
+                        </th>
+
+                        <tr>
+                            <!--Показване на имената на дните от седмицата -->
+                            <?php for ($day = 0; $day < 7; $day++): ?>
+                                <th><?php echo $dayNames[$day]; ?></th>
+                            <?php endfor; ?>
+                        </tr>
                         </thead>
                         <tbody>
-                            <!--remove the following and add your code to display the days of month: -->
-                            <!--                            
-                                                            <td class="fw-bold">1</td>
-                                                            <td class="fw-bold">2</td>
-                                                            <td class="fw-bold">3</td>
-                                                            <td class="fw-bold">4</td>
-                                                            <td class="fw-bold">5</td>
-                                                            <td class="fw-bold">6</td>
-                                                            <td class="fw-bold">7</td>
-                                                        </tr>-->
+                            <!-- Показва дните за съответния избран  месец: -->
+
                             <tr>
-                                <?php
-                                for ($i = 1; $i < 7; $i++):
-                                    for ($j = $i; $j <= $daysNumberInMonth; $j++):
-                                        $firstDayOfMonth = 1;
+                                <!--Дните на предишния месец в по-светъл цвят -->
+                                <?=$prevMonthDayNum = date("t", mktime(0, 0, 0, $selectedMonth - 1, 1, $selectedYear));//колко дни има предходния месец
+                                    ?>
+                                <?php for ($i = 0; $i < $dayIndex; $i++):?>
+                                <!--От броя на дните в месеца изваждаме индекса на дена,в който започва избрания месец +1, тъй като броим от 0-->
+                                    <td class="text-black-50"><?= $prevMonthDayNum-$dayIndex+1 ?> </td>
+                                    <?=$prevMonthDayNum++;?>
+                                    <?php endfor;
+                                //Принтират се дните от месеца според $daysNumberInMonth
+                                while ($currentDay <= $daysNumberInMonth):
+                                    if (($dayIndex < 7)): ?>
+                                        <td class="fw-bold"><?= $currentDay; ?> </td>
+                                        <?=
+                                        $currentDay++;
+                                        $dayIndex++;
                                         ?>
-                                        <td class="fw-bold"> <?= $j; ?></td>
+                                        <?php else:
+                                        $dayIndex = 0;
+                                        ?>
+                                        <!--За да минем на нов ред, когато сме стигнали неделя-->
+                                    </tr><tr>
+                                    <?php endif; ?>
+                                <?php endwhile; ?>
+                                <!--Запълваме празните клетки с дните на следващия месец в по-светъл цвят -->
+                                   <?= $nextMonthStartDay = 1;
+                                     for ($i = $dayIndex; $i < 7; $i++):
+                                    ?>
+                                    <td class="text-black-50"><?= $nextMonthStartDay; ?> </td>
+                                    <?= $nextMonthStartDay++;?>
                                 <?php endfor; ?>
-                                </tr>
-<?php endfor; ?>
                         </tbody>
                     </table>
                 </div>
